@@ -9,11 +9,13 @@
 #include <HTTPClient.h>
 #include <ModbusMaster.h>
 #include <ArduinoJson.h>
+#include <ArduinoOTA.h>
 
 #include "wifiHandler.h"
 #include "Handlers.h"
 #include "webHandlers.h"
 #include "Modbuss.h"
+#include "OTA.h"
 
 // ================== FUNCTION PROTOTYPES ==================
 void setDefaultConfig();
@@ -35,6 +37,8 @@ void printCurrentConfig();
 
 #define MAX_REG_GROUPS 5
 #define MAX_REG_LIST 80
+
+
 
 // ================== EEPROM ==================
 #define EEPROM_SIZE 2048
@@ -81,7 +85,7 @@ typedef struct
 typedef struct
 {
   uint32_t magic;
-  uint16_t version;   // ⭐ NEW
+  uint16_t version;   
 
   uint8_t wifiHidden;
 
@@ -89,6 +93,8 @@ typedef struct
 
   char parity[10];
   uint32_t baudrate;
+
+  uint16_t publishInterval;
 
   RegisterGroup groups[MAX_REG_GROUPS];
 

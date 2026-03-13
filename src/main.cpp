@@ -1,5 +1,8 @@
 #include "Global.h"
 
+void setupOTA();
+
+
 //=================== SETUP ==================
 void setup()
 {
@@ -38,12 +41,20 @@ void setup()
   Serial.println("Device started in NORMAL mode.");
   Serial.println("Hold CONFIG button for 5 sec -> Hotspot Setup Mode");
   Serial.println("===============================");
+
+  setupOTA();
 }
 
 //=============================== LOOP ==============================
 
 void loop()
 {
+  for (int i = 0; i < 5000; i++)
+  {
+    ArduinoOTA.handle(); // OTA service
+    delay(1);
+  }
+
   // Always check config button first
   if (checkConfigButton())
   {

@@ -188,6 +188,8 @@ void setDefaultConfig()
 
   config.mqttQoS = 0;
   config.mqttKeepAlive = 60;
+
+  config.publishInterval = 5;
 }
 
 // =====================================================
@@ -277,7 +279,7 @@ void loopConnectionProcess()
     static unsigned long lastPoll = 0;
     static uint8_t failCount = 0;
 
-    if (millis() - lastPoll >= 3000) // 3 sec polling
+    if (millis() - lastPoll >= config.publishInterval * 1000) // 3 sec polling
     {
       lastPoll = millis();
 

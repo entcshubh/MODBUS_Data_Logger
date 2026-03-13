@@ -106,6 +106,17 @@ void handleSaveModbus()
   if (server.hasArg("parity"))
     SAFE_COPY(config.parity, server.arg("parity").c_str());
 
+  if (server.hasArg("publishInterval"))
+  {
+    config.publishInterval = server.arg("publishInterval").toInt();
+
+    if (config.publishInterval < 1)
+      config.publishInterval = 1;
+
+    if (config.publishInterval > 3600)
+      config.publishInterval = 3600;
+  }
+
   // 🔥 Clear all groups first
   memset(config.groups, 0, sizeof(config.groups));
 

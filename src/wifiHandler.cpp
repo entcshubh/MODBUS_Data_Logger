@@ -1,29 +1,6 @@
 #include "wifiHandler.h"
 #include "Global.h"
 
-// // ================= PRINT WIFI ATTEMPT =================
-// void printWiFiAttempt()
-// {
-//   Serial.println("\n========== WIFI CONNECTION ATTEMPT ==========");
-
-//   Serial.print("SSID        : ");
-//   Serial.println(config.wifiSSID);
-
-//   Serial.print("Password    : ");
-//   Serial.println(strlen(config.wifiPASS) ? config.wifiPASS : "(OPEN NETWORK)");
-
-//   Serial.print("Hidden      : ");
-//   Serial.println(config.wifiHidden ? "YES" : "NO");
-
-//   Serial.print("Enc Mode    : ");
-//   Serial.println(config.wifiEncMode);
-
-//   Serial.print("Enc Type    : ");
-//   Serial.println(config.wifiEncType);
-
-//   Serial.println("=============================================\n");
-// }
-
 
 // ================= WIFI STATE MACHINE =================
 void processWiFiState()
