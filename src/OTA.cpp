@@ -5,7 +5,7 @@ void setupOTA()
 {
     ArduinoOTA.setHostname("ESP32_MODBUS_NODE");
 
-    ArduinoOTA.setPassword("root@1");
+    ArduinoOTA.setPassword("root@2");
 
     ArduinoOTA.onStart([]()
                        { Serial.println("OTA Update Started"); });
