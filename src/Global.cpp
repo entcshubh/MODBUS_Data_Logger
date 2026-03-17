@@ -230,9 +230,10 @@ void loopConnectionProcess()
   // ================= RUNNING =================
   case STATE_RUNNING:
   {
-    // Maintain MQTT connection
-    if (mqttClient.connected())
-      mqttClient.loop();
+    readModbusAndPublish();
+        // Maintain MQTT connection
+        if (mqttClient.connected())
+            mqttClient.loop();
 
     // ----------------------------------
     // WiFi dependency

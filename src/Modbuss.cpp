@@ -247,9 +247,16 @@ bool readModbusAndPublish()
         uint8_t result;
 
         if (strcmp(grp.regType, "holding") == 0)
+        {
+          Serial.println(reg - 1);
+          
           result = node.readHoldingRegisters(reg - 1, 1);
+        }
         else
+        {
+          Serial.println(reg - 1);
           result = node.readInputRegisters(reg - 1, 1);
+        }
 
         char key[12];
         sprintf(key, "%cB%d", typePrefix, reg);
@@ -287,16 +294,23 @@ bool readModbusAndPublish()
       uint8_t result;
 
       if (strcmp(grp.regType, "holding") == 0)
-        result = node.readHoldingRegisters(startReg - 1, regCount);
+      {
+        Serial.println(startReg - 1);
+        Serial.println(regCount);
+        result = node.readHoldingRegisters(startReg - 1, regCount);}
       else
+      {
+        Serial.println(startReg - 1);
+        Serial.println(regCount);
         result = node.readInputRegisters(startReg - 1, regCount);
+      }
 
-      // Serial.print("Block read start=");
-      // Serial.print(startReg);
-      // Serial.print(" count=");
-      // Serial.print(regCount);
-      // Serial.print(" result=");
-      // Serial.println(result);
+      Serial.print("Block read start=");
+      Serial.print(startReg);
+      Serial.print(" count=");
+      Serial.print(regCount);
+      Serial.print(" result=");
+      Serial.println(result);
 
       if (result == node.ku8MBSuccess)
       {
@@ -315,12 +329,12 @@ bool readModbusAndPublish()
           uint16_t word1 = node.getResponseBuffer(index);
           uint16_t word2 = node.getResponseBuffer(index + 1);
 
-          // Serial.print("Reg ");
-          // Serial.print(reg);
-          // Serial.print(" raw words: ");
-          // Serial.print(word1);
-          // Serial.print(" ");
-          // Serial.println(word2);
+          Serial.print("Reg ");
+          Serial.print(reg);
+          Serial.print(" raw words: ");
+          Serial.print(word1);
+          Serial.print(" ");
+          Serial.println(word2);
 
           // Correct order: HIGH word first, LOW word second
           float value = convertFloat(word1, word2);
