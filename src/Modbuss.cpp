@@ -21,16 +21,13 @@ void sortRegisters(uint16_t regs[], int count)
 
 //-----------------------------------------------------------------------------------
 // FLOAT CONVERSION (HIGH WORD FIRST)
-float convertFloat(uint16_t high, uint16_t low)
+float convertFloat(uint16_t w1, uint16_t w2)
 {
-  union
-  {
-    uint32_t i;
-    float f;
-  } u;
+  uint32_t raw = ((uint32_t)w2 << 16) | w1; // 🔥 SWAPPED
 
-  u.i = ((uint32_t)high << 16) | low;
-  return u.f;
+  float f;
+  memcpy(&f, &raw, sizeof(f));
+  return f;
 }
 
 //-----------------------------------------------------------------------------------
@@ -249,7 +246,7 @@ bool readModbusAndPublish()
         if (strcmp(grp.regType, "holding") == 0)
         {
           Serial.println(reg - 1);
-          
+
           result = node.readHoldingRegisters(reg - 1, 1);
         }
         else
@@ -297,7 +294,8 @@ bool readModbusAndPublish()
       {
         Serial.println(startReg - 1);
         Serial.println(regCount);
-        result = node.readHoldingRegisters(startReg - 1, regCount);}
+        result = node.readHoldingRegisters(startReg - 1, regCount);
+      }
       else
       {
         Serial.println(startReg - 1);
@@ -337,14 +335,17 @@ bool readModbusAndPublish()
           Serial.println(word2);
 
           // Correct order: HIGH word first, LOW word second
-          float value = convertFloat(word1, word2);
+          float value = convertFloat(word2, word1);
 
           // Safety filter
-          if (isnan(value) || value > 10000000 || value < -10000000)
+          if (isnan(value) || isinf(value))
             value = 0;
 
+          Serial.print("Decoded float: ");
+          Serial.println(value, 6);
+
           char valueStr[20];
-          sprintf(valueStr, "%.4f", value);   // print like meter output
+          sprintf(valueStr, "%.4f", value); // print like meter output
 
           char key[12];
           sprintf(key, "%cA%d", typePrefix, reg);
