@@ -39,6 +39,11 @@ void printCurrentConfig();
 #define MAX_REG_LIST 80
 
 
+//===============POST INTERVAL================
+extern unsigned long lastPublishTime;
+extern unsigned long postInterval;
+
+
 
 // ================== EEPROM ==================
 #define EEPROM_SIZE 2048

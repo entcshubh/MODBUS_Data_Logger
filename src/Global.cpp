@@ -26,6 +26,9 @@ const unsigned long CONN_RETRY_INTERVAL = 2000;
 
 unsigned long lastPoll = 0;
 
+unsigned long lastPublishTime = 0;
+unsigned long postInterval = 5000; // default
+
 // -------- System State --------
 SystemState state = STATE_NORMAL_WIFI;
 

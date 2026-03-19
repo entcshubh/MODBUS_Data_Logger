@@ -267,7 +267,6 @@ void handleRoot()
       <div class="item" onclick="openTab('mqtt')">MQTT Setup</div>
       <div class="item" onclick="openTab('http')">HTTP Setup</div>
       <div class="item" onclick="openTab('modbus')">Modbus Setup</div>
-
       <div class="spacer"></div>
     </div>
 
@@ -407,29 +406,29 @@ void handleRoot()
 
   // page += String(config.regList);
 
-   page += R"rawliteral(
+  page += R"rawliteral(
 <div class="info-row"><b>Modbus:</b><br>
   <small>
     SlaveID:
     <span id="infoSlaveID">)rawliteral";
 
-page += String(config.slaveID);
+  page += String(config.slaveID);
 
-page += R"rawliteral(</span><br>
+  page += R"rawliteral(</span><br>
 
     Baudrate:
     <span id="infoBaud">)rawliteral";
 
-page += String(config.baudrate);
+  page += String(config.baudrate);
 
-page += R"rawliteral(</span><br>
+  page += R"rawliteral(</span><br>
 
     Parity:
     <span id="infoParity">)rawliteral";
 
-page += String(config.parity);
+  page += String(config.parity);
 
-page += R"rawliteral(</span><br><br>
+  page += R"rawliteral(</span><br><br>
 
     <b>Register Groups</b><br>
 
@@ -443,6 +442,25 @@ page += R"rawliteral(</span><br><br>
 
   </small>
 </div>
+)rawliteral";
+
+  page += R"rawliteral(
+<label>Post Interval</label>
+<select name="postInterval">
+page += "<option value='5'"  + String(config.postInterval==5?" selected":"")  + ">5 sec</option>";
+page += "<option value='10'" + String(config.postInterval==10?" selected":"") + ">10 sec</option>";
+page += "<option value='15'" + String(config.postInterval==15?" selected":"") + ">15 sec</option>";
+page += "<option value='30'" + String(config.postInterval==30?" selected":"") + ">30 sec</option>";
+
+page += "<option value='60'"  + String(config.postInterval==60?" selected":"")  + ">1 min</option>";
+page += "<option value='120'" + String(config.postInterval==120?" selected":"") + ">2 min</option>";
+page += "<option value='300'" + String(config.postInterval==300?" selected":"") + ">5 min</option>";
+page += "<option value='600'" + String(config.postInterval==600?" selected":"") + ">10 min</option>";
+page += "<option value='1800'" + String(config.postInterval==1800?" selected":"") + ">30 min</option>";
+page += "<option value='3600'" + String(config.postInterval==3600?" selected":"") + ">1 hour</option>";
+
+page += R"rawliteral(
+</select>
 )rawliteral";
 
   page += R"rawliteral(
@@ -640,31 +658,31 @@ Press + to add register groups.
 <label>Slave ID</label>
 <input type="number" name="slaveID" value=")rawliteral";
 
-page += String(config.slaveID);
+  page += String(config.slaveID);
 
-page += R"rawliteral(">
+  page += R"rawliteral(">
 
 <label>Baudrate</label>
 <select name="baudrate">
 )rawliteral";
 
-page += "<option value='4800'"  + String(config.baudrate==4800?" selected":"")  + ">4800</option>";
-page += "<option value='9600'"  + String(config.baudrate==9600?" selected":"")  + ">9600</option>";
-page += "<option value='19200'" + String(config.baudrate==19200?" selected":"") + ">19200</option>";
-page += "<option value='115200'"+ String(config.baudrate==115200?" selected":"")+ ">115200</option>";
+  page += "<option value='4800'" + String(config.baudrate == 4800 ? " selected" : "") + ">4800</option>";
+  page += "<option value='9600'" + String(config.baudrate == 9600 ? " selected" : "") + ">9600</option>";
+  page += "<option value='19200'" + String(config.baudrate == 19200 ? " selected" : "") + ">19200</option>";
+  page += "<option value='115200'" + String(config.baudrate == 115200 ? " selected" : "") + ">115200</option>";
 
-page += R"rawliteral(
+  page += R"rawliteral(
 </select>
 
 <label>Parity</label>
 <select name="parity">
 )rawliteral";
 
-page += "<option value='NONE'" + String(config.parity=="NONE"?" selected":"") + ">NONE</option>";
-page += "<option value='EVEN'" + String(config.parity=="EVEN"?" selected":"") + ">EVEN</option>";
-page += "<option value='ODD'"  + String(config.parity=="ODD" ?" selected":"") + ">ODD</option>";
+  page += "<option value='NONE'" + String(config.parity == "NONE" ? " selected" : "") + ">NONE</option>";
+  page += "<option value='EVEN'" + String(config.parity == "EVEN" ? " selected" : "") + ">EVEN</option>";
+  page += "<option value='ODD'" + String(config.parity == "ODD" ? " selected" : "") + ">ODD</option>";
 
-page += R"rawliteral(
+  page += R"rawliteral(
 </select>
 
 <hr style="margin:20px 0">
@@ -858,6 +876,9 @@ async function refreshGeneralInfo(){
     document.getElementById("infoSlaveID").innerHTML = cfg.slaveID || "-";
     document.getElementById("infoBaud").innerHTML = cfg.baudrate || "-";
     document.getElementById("infoParity").innerHTML = cfg.parity || "-";
+
+  //post intevral
+    document.getElementById("infoPostInterval").innerHTML = cfg.postInterval || "-";
 
     // ================= REGISTER GROUP DISPLAY =================
     let regHTML = "";

@@ -277,7 +277,7 @@ void mqttCallback(char *topic, byte *payload, unsigned int length)
   Serial.println(topic);
 }
 
-// ================= NET STATE MACHINE =================
+// ================= NET STATE MACHINE =======================================
 void processNetState()
 {
   // ===============================

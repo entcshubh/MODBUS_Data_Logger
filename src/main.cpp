@@ -76,6 +76,14 @@ void loop()
   }
 
   server.handleClient();
+  if (state == STATE_NORMAL_MODBUS)
+  {
+    if (millis() - lastPublishTime >= (config.publishInterval * 1000))
+    {
+      lastPublishTime = millis();
 
+      Serial.println("📡 Running Modbus + Publish");
+    }
+  }
   delay(1);
 }
