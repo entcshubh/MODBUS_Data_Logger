@@ -20,7 +20,6 @@
 // ================== FUNCTION PROTOTYPES ==================
 void setDefaultConfig();
 void loopBootConfig();
-void loopConnectionProcess();
 void printCurrentConfig();
 
 // ================== PIN CONFIG ==================
@@ -38,12 +37,9 @@ void printCurrentConfig();
 #define MAX_REG_GROUPS 5
 #define MAX_REG_LIST 80
 
-
 //===============POST INTERVAL================
 extern unsigned long lastPublishTime;
-extern unsigned long postInterval;
-
-
+// extern unsigned long postInterval;
 
 // ================== EEPROM ==================
 #define EEPROM_SIZE 2048
@@ -74,9 +70,9 @@ enum SystemState
 
 typedef struct
 {
-  uint8_t enabled;              
+  uint8_t enabled;
 
-  char regType[12];             // input / holding / coil / discrete
+  char regType[12]; // input / holding / coil / discrete
 
   uint8_t reg8_enable;
   char reg8_list[MAX_REG_LIST];
@@ -90,7 +86,7 @@ typedef struct
 typedef struct
 {
   uint32_t magic;
-  uint16_t version;   
+  uint16_t version;
 
   uint8_t wifiHidden;
 
@@ -122,8 +118,14 @@ typedef struct
   uint8_t mqttQoS;
   uint16_t mqttKeepAlive;
 
-} DeviceConfig;
+  // post interval
+  int postInterval = 5; // default
 
+  // login info
+  char webUser[20];
+  char webPass[20];
+
+} DeviceConfig;
 
 // ---- Network Objects ----
 extern WiFiClient espClient;
@@ -131,6 +133,8 @@ extern PubSubClient mqttClient;
 extern WebServer server;
 extern ModbusMaster node;
 
+// -------- Device Configuration --------
+extern DeviceConfig config;
 
 // ---- Retry Management ----
 extern int wifiRetry;
@@ -140,7 +144,7 @@ extern int modbusRetry;
 extern unsigned long lastConnAttempt;
 extern const unsigned long CONN_RETRY_INTERVAL;
 
-extern unsigned long lastPoll;
+// extern unsigned long lastPoll;
 
 // ---- System State ----
 extern SystemState state;
@@ -150,8 +154,7 @@ extern bool httpReady;
 extern bool modbusReady;
 extern bool hotspotMode;
 
-// ---- Device Configuration ----
-extern DeviceConfig config;
+extern bool isLoggedIn;
 
 void processRunningState();
 

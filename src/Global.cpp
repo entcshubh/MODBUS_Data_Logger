@@ -9,12 +9,12 @@
 //              GLOBAL OBJECT DEFINITIONS
 // =====================================================
 
+
 // -------- Network Objects --------
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 WebServer server(80);
 ModbusMaster node;
-
 
 // -------- Retry Management --------
 int wifiRetry = 0;
@@ -24,22 +24,23 @@ int modbusRetry = 0;
 unsigned long lastConnAttempt = 0;
 const unsigned long CONN_RETRY_INTERVAL = 2000;
 
-unsigned long lastPoll = 0;
-
+// unsigned long lastPoll = 0;
 unsigned long lastPublishTime = 0;
-unsigned long postInterval = 5000; // default
 
 // -------- System State --------
 SystemState state = STATE_NORMAL_WIFI;
 
+//MQTT
 bool mqttReady = false;
 bool httpReady = false;
 bool modbusReady = false;
 bool hotspotMode = false;
 
+// LOGIN
+bool isLoggedIn = false;
+
 // -------- Device Configuration --------
 DeviceConfig config;
-
 
 //===========================CONFIG PRINT FUNCTION ==========================
 void printCurrentConfig()
@@ -136,6 +137,11 @@ void printCurrentConfig()
     Serial.println("No register groups enabled.");
   }
 
+  Serial.println("----------------------------- POST INTERVAL");
+  //================= POST INTERVAL =================
+  Serial.print("Post Interval : ");
+  Serial.println(config.postInterval);
+
   Serial.println("================================================\n");
 }
 
@@ -144,11 +150,14 @@ void printCurrentConfig()
 // =====================================================
 void setDefaultConfig()
 {
-  // 🔥 Clear entire struct first
   memset(&config, 0, sizeof(config));
 
   config.magic = CONFIG_MAGIC;
   config.version = CONFIG_VERSION;
+
+  // ================= LOGIN =================
+  SAFE_COPY(config.webUser, "admin");
+  SAFE_COPY(config.webPass, "admin");
 
   // ================= WIFI =================
   config.wifiHidden = 0;
@@ -192,129 +201,13 @@ void setDefaultConfig()
   config.mqttQoS = 0;
   config.mqttKeepAlive = 60;
 
-  config.publishInterval = 5;
+  config.postInterval = 5;
+
+  Serial.println("After reset:");
+  Serial.println(config.webUser);
+  Serial.println(config.webPass);
 }
 
-// =====================================================
-//              LOOP HANDLERS
-// =====================================================
-void loopBootConfig()
-{
-  if (hotspotMode)
-  {
-    server.handleClient();
-    blinkLEDHotspot();
-  }
-}
-
-void loopConnectionProcess()
-{
-
-  if (hotspotMode)
-    return;
-
-  switch (state)
-  {
-  // ================= WIFI =================
-  case STATE_NORMAL_WIFI:
-    processWiFiState();
-    break;
-
-  // ================= NETWORK =================
-  case STATE_NORMAL_NET:
-    processNetState();
-    break;
-
-  // ================= MODBUS INIT =================
-  case STATE_NORMAL_MODBUS:
-    processModbusState();
-    break;
-
-  // ================= RUNNING =================
-  case STATE_RUNNING:
-  {
-    readModbusAndPublish();
-        // Maintain MQTT connection
-        if (mqttClient.connected())
-            mqttClient.loop();
-
-    // ----------------------------------
-    // WiFi dependency
-    // ----------------------------------
-    if (WiFi.status() != WL_CONNECTED)
-    {
-      Serial.println("⚠️ WiFi dropped -> restarting WiFi flow");
-
-      mqttReady = false;
-      httpReady = false;
-      modbusReady = false;
-
-      state = STATE_NORMAL_WIFI;
-      break;
-    }
-
-    // ----------------------------------
-    // Network dependency
-    // ----------------------------------
-    if (!mqttClient.connected())
-      mqttReady = false;
-
-    if (!(mqttReady || httpReady))
-    {
-      Serial.println("⚠️ MQTT & HTTP down -> restarting net flow");
-
-      modbusReady = false;
-      state = STATE_NORMAL_NET;
-      break;
-    }
-
-    // ----------------------------------
-    // Modbus dependency
-    // ----------------------------------
-    if (!modbusReady)
-    {
-      state = STATE_NORMAL_MODBUS;
-      break;
-    }
-
-    // ----------------------------------
-    // Continuous Polling
-    // ----------------------------------
-    static unsigned long lastPoll = 0;
-    static uint8_t failCount = 0;
-
-    if (millis() - lastPoll >= config.publishInterval * 1000) // 3 sec polling
-    {
-      lastPoll = millis();
-
-      bool success = readModbusAndPublish();
-
-      if (!success)
-      {
-        failCount++;
-        Serial.printf("❌ Modbus poll failed (%d)\n", failCount);
-
-        if (failCount >= 5)
-        {
-          Serial.println("⚠️ Modbus lost -> returning to MODBUS state");
-          failCount = 0;
-          modbusReady = false;
-          state = STATE_NORMAL_MODBUS;
-        }
-      }
-      else
-      {
-        failCount = 0; // Reset on success
-      }
-    }
-  }
-  break;
-
-  // ================= HOTSPOT =================
-  case STATE_HOTSPOT:
-    break;
-  }
-}
 
 //--------------------------PROCESS RUNNING STATE-------------------
 void processRunningState()

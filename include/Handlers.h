@@ -6,13 +6,16 @@
 // ================== WEB ROUTE HANDLERS ==================
 void handleGetConfig();
 
+bool checkLogin();
+void handleLogin();
 void handleSaveWiFi();
 void handleSaveMQTT();
 void handleSaveHTTP();
 void handleSaveModbus();
+void handleSaveInterval();
 
-// ================== CONFIG STORAGE ==================
-void saveConfigToEEPROM();
+    // ================== CONFIG STORAGE ==================
+    void saveConfigToEEPROM();
 void loadConfigFromEEPROM();
 
 // ================== MQTT ==================

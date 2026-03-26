@@ -92,13 +92,15 @@ void blinkLEDHotspot()
 void setupWebServerRoutes()
 {
   server.on("/", HTTP_GET, handleRoot);
-
+  server.on("/login", HTTP_POST, handleLogin);
+  
   server.on("/get_config", HTTP_GET, handleGetConfig);
 
   server.on("/save_wifi", HTTP_POST, handleSaveWiFi);
   server.on("/save_mqtt", HTTP_POST, handleSaveMQTT);
   server.on("/save_http", HTTP_POST, handleSaveHTTP);
   server.on("/save_modbus", HTTP_POST, handleSaveModbus);
+  server.on("/save_interval", HTTP_POST, handleSaveInterval);
   server.on("/status", handleSystemStatus);
 
   server.on("/apply_now", HTTP_POST, handleApplyNow);

@@ -23,7 +23,7 @@ void sortRegisters(uint16_t regs[], int count)
 // FLOAT CONVERSION (HIGH WORD FIRST)
 float convertFloat(uint16_t w1, uint16_t w2)
 {
-  uint32_t raw = ((uint32_t)w2 << 16) | w1; // 🔥 SWAPPED
+  uint32_t raw = ((uint32_t)w2 << 16) | w1;   // SWAPPED
 
   float f;
   memcpy(&f, &raw, sizeof(f));
@@ -145,9 +145,9 @@ void processModbusState()
         Serial.println(reg);
 
         if (strcmp(grp.regType, "holding") == 0)
-          result = node.readHoldingRegisters(reg - 1, 2);
+          result = node.readHoldingRegisters(reg, 2);
         else
-          result = node.readInputRegisters(reg - 1, 2);
+          result = node.readInputRegisters(reg, 2);
 
         break;
       }
@@ -164,9 +164,9 @@ void processModbusState()
         uint16_t reg = regAddrs[0];
 
         if (strcmp(grp.regType, "holding") == 0)
-          result = node.readHoldingRegisters(reg - 1, 1);
+          result = node.readHoldingRegisters(reg, 1);
         else
-          result = node.readInputRegisters(reg - 1, 1);
+          result = node.readInputRegisters(reg, 1);
 
         break;
       }
@@ -245,14 +245,14 @@ bool readModbusAndPublish()
 
         if (strcmp(grp.regType, "holding") == 0)
         {
-          Serial.println(reg - 1);
+          Serial.println(reg);
 
-          result = node.readHoldingRegisters(reg - 1, 1);
+          result = node.readHoldingRegisters(reg, 1);
         }
         else
         {
-          Serial.println(reg - 1);
-          result = node.readInputRegisters(reg - 1, 1);
+          Serial.println(reg);
+          result = node.readInputRegisters(reg, 1);
         }
 
         char key[12];
@@ -292,15 +292,15 @@ bool readModbusAndPublish()
 
       if (strcmp(grp.regType, "holding") == 0)
       {
-        Serial.println(startReg - 1);
+        Serial.println(startReg);
         Serial.println(regCount);
-        result = node.readHoldingRegisters(startReg - 1, regCount);
+        result = node.readHoldingRegisters(startReg , regCount);
       }
       else
       {
-        Serial.println(startReg - 1);
+        Serial.println(startReg);
         Serial.println(regCount);
-        result = node.readInputRegisters(startReg - 1, regCount);
+        result = node.readInputRegisters(startReg, regCount);
       }
 
       Serial.print("Block read start=");
@@ -335,7 +335,7 @@ bool readModbusAndPublish()
           Serial.println(word2);
 
           // Correct order: HIGH word first, LOW word second
-          float value = convertFloat(word2, word1);
+          float value = convertFloat(word1, word2);
 
           // Safety filter
           if (isnan(value) || isinf(value))

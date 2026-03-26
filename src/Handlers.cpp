@@ -1,10 +1,47 @@
 #include "Handlers.h"
 #include "Global.h"
-#include "webHandlers.h" // for sendStatus()
+#include "webHandlers.h"
 
-//=================== HANDLER FOR SAVING WIFI CONFIG ==================
+// =================== CHECK LOGIN ==================
+bool checkLogin()
+{
+  if (!isLoggedIn)
+  {
+    server.send(403, "application/json", "{\"status\":\"UNAUTHORIZED\"}");
+    return false;
+  }
+  return true;
+}
+
+//=================== HANDLER LOGIN PAGE ==================
+void handleLogin()
+{
+  String u = server.arg("user");
+  String p = server.arg("pass");
+
+  Serial.println("==== LOGIN DEBUG ====");
+  Serial.println("Entered User: " + u);
+  Serial.println("Entered Pass: " + p);
+  Serial.println("Stored User: " + String(config.webUser));
+  Serial.println("Stored Pass: " + String(config.webPass));
+
+  if (u == config.webUser && p == config.webPass)
+  {
+    isLoggedIn = true;
+    server.send(200, "application/json", "{\"status\":\"OK\"}");
+  }
+  else
+  {
+    server.send(200, "application/json", "{\"status\":\"FAIL\"}");
+  }
+}
+
+//=================== HANDLER WIFI CONFIG ==================
 void handleSaveWiFi()
 {
+  if (!checkLogin())
+    return;
+
   Serial.println("\n===== /save_wifi HIT =====");
 
   Serial.print("Args count = ");
@@ -37,21 +74,29 @@ void handleSaveWiFi()
     SAFE_COPY(config.wifiPASS, server.arg("wifiPASS").c_str());
 
   if (String(config.wifiEncMode) == "NONE")
-    strcpy(config.wifiPASS, "");
+    SAFE_COPY(config.wifiPASS, "");
 
   saveConfigToEEPROM();
 
   server.send(200, "application/json", "{\"status\":\"OK\"}");
 }
 
-//=================== MQTT CONFIG ==================
+
+//=================== HANDLER MQTT CONFIG ==================
 void handleSaveMQTT()
 {
+  if (!checkLogin())
+    return;
+
   if (server.hasArg("mqttHost"))
     SAFE_COPY(config.mqttHost, server.arg("mqttHost").c_str());
 
   if (server.hasArg("mqttPort"))
-    config.mqttPort = server.arg("mqttPort").toInt();
+  {
+    int port = server.arg("mqttPort").toInt();
+    if (port > 0 && port <= 65535)
+      config.mqttPort = port;
+  }
 
   if (server.hasArg("mqttUser"))
     SAFE_COPY(config.mqttUser, server.arg("mqttUser").c_str());
@@ -60,7 +105,11 @@ void handleSaveMQTT()
     SAFE_COPY(config.mqttPass, server.arg("mqttPass").c_str());
 
   if (server.hasArg("mqttTopic"))
-    SAFE_COPY(config.mqttTopic, server.arg("mqttTopic").c_str());
+  {
+    String topic = server.arg("mqttTopic");
+    if (topic.length() > 0)
+      SAFE_COPY(config.mqttTopic, topic.c_str());
+  }
 
   if (server.hasArg("mqttClientName"))
     SAFE_COPY(config.mqttClientName, server.arg("mqttClientName").c_str());
@@ -69,34 +118,66 @@ void handleSaveMQTT()
     SAFE_COPY(config.mqttClientID, server.arg("mqttClientID").c_str());
 
   if (server.hasArg("mqttQoS"))
-    config.mqttQoS = server.arg("mqttQoS").toInt();
+  {
+    int qos = server.arg("mqttQoS").toInt();
+    if (qos >= 0 && qos <= 2)
+      config.mqttQoS = qos;
+  }
 
   if (server.hasArg("mqttKeepAlive"))
-    config.mqttKeepAlive = server.arg("mqttKeepAlive").toInt();
+  {
+    int ka = server.arg("mqttKeepAlive").toInt();
+    if (ka >= 10 && ka <= 120)
+      config.mqttKeepAlive = ka;
+  }
+
+  Serial.println("MQTT Config Updated:");
+  Serial.println(config.mqttHost);
+  Serial.println(config.mqttPort);
+  Serial.println(config.mqttTopic);
 
   saveConfigToEEPROM();
   server.send(200, "application/json", "{\"status\":\"OK\"}");
 }
 
-//=================== HTTP CONFIG ==================
+//=================== HANDLER HTTP CONFIG ==================
 void handleSaveHTTP()
 {
+  if (!checkLogin())
+    return;
+
   if (!server.hasArg("httpURL") || !server.hasArg("httpPort"))
   {
     sendStatus(false);
     return;
   }
 
-  strlcpy(config.httpURL, server.arg("httpURL").c_str(), sizeof(config.httpURL));
-  config.httpPort = server.arg("httpPort").toInt();
+  String url = server.arg("httpURL");
+  int port = server.arg("httpPort").toInt();
+
+  if (url.length() == 0 || port <= 0 || port > 65535)
+  {
+    sendStatus(false);
+    return;
+  }
+
+  strlcpy(config.httpURL, url.c_str(), sizeof(config.httpURL));
+  config.httpPort = port;
+
+  Serial.println("HTTP Config Updated:");
+  Serial.println(config.httpURL);
+  Serial.println(config.httpPort);
 
   saveConfigToEEPROM();
   sendStatus(true);
 }
 
-//=================== MODBUS CONFIG ==================
+//=================== HANDLER MODBUS CONFIG ==================
 void handleSaveModbus()
 {
+  if (!checkLogin())
+    return;
+
   if (server.hasArg("slaveID"))
     config.slaveID = server.arg("slaveID").toInt();
 
@@ -155,7 +236,28 @@ void handleSaveModbus()
   server.send(200, "application/json", "{\"status\":\"OK\"}");
 }
 
-// ================== GET CONFIG ==================
+//=================== HANDLER POST INTERVAL CONFIG ==================
+void handleSaveInterval()
+{
+  if (!checkLogin())
+    return;
+
+  if (server.hasArg("postInterval"))
+  {
+    config.postInterval = server.arg("postInterval").toInt();
+
+    saveConfigToEEPROM(); // ✅ FIXED
+
+    lastPublishTime = 0; // ✅ apply immediately
+
+    Serial.println("Post Interval Saved: " + String(config.postInterval));
+  }
+
+  server.send(200, "application/json", "{\"status\":\"OK\"}");
+}
+
+
+// ================== HANDLER GET CONFIG ==================
 void handleGetConfig()
 {
   JsonDocument doc;
@@ -181,6 +283,7 @@ void handleGetConfig()
   doc["slaveID"] = config.slaveID;
   doc["baudrate"] = config.baudrate;
   doc["parity"] = config.parity;
+  doc["postInterval"] = config.postInterval;
 
   JsonArray arr = doc["groups"].to<JsonArray>();
 
@@ -206,7 +309,7 @@ void handleGetConfig()
   server.send(200, "application/json", out);
 }
 
-// ================== EEPROM ==================
+// ================== SAVE TO EEPROM ==================
 void saveConfigToEEPROM()
 {
   config.magic = CONFIG_MAGIC;
@@ -269,7 +372,16 @@ void loadConfigFromEEPROM()
   config.mqttClientID[sizeof(config.mqttClientID) - 1] = '\0';
 
   config.parity[sizeof(config.parity) - 1] = '\0';
+
+  if (config.postInterval <= 0 || config.postInterval > 3600)
+  {
+    Serial.println("⚠️ Invalid postInterval detected. Resetting to default (5 sec)");
+    config.postInterval = 5;
+
+    saveConfigToEEPROM();
+  }
 }
+
 // ================= MQTT CALLBACK =================
 void mqttCallback(char *topic, byte *payload, unsigned int length)
 {
@@ -397,6 +509,8 @@ void processNetState()
       http.addHeader("Content-Type", "application/json");
 
       String payload = "{\"status\":\"test\"}";
+
+      // delay(config.postInterval * 1000);
 
       int code = http.POST(payload);
 

@@ -1,5 +1,6 @@
 #include "Global.h"
 
+// ================WEB PAGE====================
 void handleRoot()
 {
   // ✅ Always show STA IP (connected WiFi IP)
@@ -267,6 +268,7 @@ void handleRoot()
       <div class="item" onclick="openTab('mqtt')">MQTT Setup</div>
       <div class="item" onclick="openTab('http')">HTTP Setup</div>
       <div class="item" onclick="openTab('modbus')">Modbus Setup</div>
+      <div class="item" onclick="openTab('postInterval')">Post Interval Setup</div>
       <div class="spacer"></div>
     </div>
 
@@ -445,22 +447,15 @@ void handleRoot()
 )rawliteral";
 
   page += R"rawliteral(
-<label>Post Interval</label>
-<select name="postInterval">
-page += "<option value='5'"  + String(config.postInterval==5?" selected":"")  + ">5 sec</option>";
-page += "<option value='10'" + String(config.postInterval==10?" selected":"") + ">10 sec</option>";
-page += "<option value='15'" + String(config.postInterval==15?" selected":"") + ">15 sec</option>";
-page += "<option value='30'" + String(config.postInterval==30?" selected":"") + ">30 sec</option>";
+<div class="info-row"><b>Post Interval:</b><br>
+  <small>
+)rawliteral";
 
-page += "<option value='60'"  + String(config.postInterval==60?" selected":"")  + ">1 min</option>";
-page += "<option value='120'" + String(config.postInterval==120?" selected":"") + ">2 min</option>";
-page += "<option value='300'" + String(config.postInterval==300?" selected":"") + ">5 min</option>";
-page += "<option value='600'" + String(config.postInterval==600?" selected":"") + ">10 min</option>";
-page += "<option value='1800'" + String(config.postInterval==1800?" selected":"") + ">30 min</option>";
-page += "<option value='3600'" + String(config.postInterval==3600?" selected":"") + ">1 hour</option>";
+  page += String(config.postInterval);
 
-page += R"rawliteral(
-</select>
+  page += R"rawliteral(
+ seconds</small>
+</div>
 )rawliteral";
 
   page += R"rawliteral(
@@ -697,17 +692,48 @@ Press + to add register groups.
 
 </form>
 </div>
+)rawliteral";
 
-<div class="info-row"><b>Runtime Status:</b><br>
-  <small>
-    WiFi: <span id="runWifi">-</span><br>
-    MQTT: <span id="runMqtt">-</span><br>
-    Modbus: <span id="runModbus">-</span><br>
-    State: <span id="runState">-</span>
-  </small>
-</div>
-</div>
+  // ================= POST INTERVAL TAB =================
+  page += R"rawliteral(
+<!-- POST INTERVAL -->
+<div id="postInterval" class="card hidden">
+  <h2>Post Interval Setup</h2>
 
+  <p class="note">
+    Select how frequently data should be sent.
+  </p>
+
+  <form id="formInterval">
+
+    <label>Select Interval</label>
+    <select name="postInterval">
+)rawliteral";
+
+  // dynamic dropdown
+  int values[] = {5, 10, 15, 30, 60, 120, 300, 900, 1800, 3600};
+  String labels[] = {
+      "5 sec", "10 sec", "15 sec", "30 sec",
+      "1 min", "2 min", "5 min", "15 min", "30 min", "1 hour"};
+
+  for (int i = 0; i < 10; i++)
+  {
+    page += "<option value='" + String(values[i]) + "'";
+    if (config.postInterval == values[i])
+      page += " selected";
+    page += ">" + labels[i] + "</option>";
+  }
+
+  page += R"rawliteral(
+    </select>
+
+    <button type="submit">Save Interval</button>
+
+  </form>
+</div>
+)rawliteral";
+
+  page += R"rawliteral(
 <script>
 var savedWiFiMode = ")rawliteral";
 
@@ -715,13 +741,24 @@ var savedWiFiMode = ")rawliteral";
 
   page += R"rawliteral(";
 
-function doLogin(){
+async function doLogin(){
   var u = document.getElementById("loginUser").value.trim();
   var p = document.getElementById("loginPass").value.trim();
 
-  console.log(u,p);
+  const fd = new FormData();
+  fd.append("user", u);
+  fd.append("pass", p);
 
-  if(u === "admin" && p === "admin"){
+  const res = await fetch("/login", {
+    method: "POST",
+    body: fd
+  });
+
+  const data = await res.json();
+
+  if(data.status === "OK"){
+    localStorage.setItem("loggedIn", "true");
+
     document.getElementById("loginPage").classList.add("hidden");
     document.getElementById("mainUI").classList.remove("hidden");
     openTab("general");
@@ -760,7 +797,7 @@ function openTab(tab){
   document.getElementById("mqtt").classList.add("hidden");
   document.getElementById("http").classList.add("hidden");
   document.getElementById("modbus").classList.add("hidden");
-
+  document.getElementById("postInterval").classList.add("hidden");
   document.getElementById(tab).classList.remove("hidden");
   closeSidebar();
 }
@@ -877,8 +914,6 @@ async function refreshGeneralInfo(){
     document.getElementById("infoBaud").innerHTML = cfg.baudrate || "-";
     document.getElementById("infoParity").innerHTML = cfg.parity || "-";
 
-  //post intevral
-    document.getElementById("infoPostInterval").innerHTML = cfg.postInterval || "-";
 
     // ================= REGISTER GROUP DISPLAY =================
     let regHTML = "";
@@ -1079,6 +1114,11 @@ document.getElementById("formModbus").addEventListener("submit", function(e){
   postForm("/save_modbus", "formModbus");
 });
 
+document.getElementById("formInterval").addEventListener("submit", function(e){
+  e.preventDefault();
+  postForm("/save_interval", "formInterval");
+});
+
 // document.getElementById("infoRegType").innerHTML = cfg.regType;
 // document.getElementById("infoRegList").innerHTML = cfg.regList;
 
@@ -1087,15 +1127,16 @@ async function updateAndRestart(){
   await fetch("/apply_now", { method:"POST" });
 }
 
-// window.onload = function(){
-//   setWiFiMode(savedWiFiMode);
-//   refreshGeneralInfo();
-//   wifiEncChanged();
-//   loadFixedRegisterGroups();
-//   // addRegisterBlock();
-// }
-
 window.onload = function(){
+
+if(localStorage.getItem("loggedIn") !== "true"){
+    document.getElementById("loginPage").classList.remove("hidden");
+    document.getElementById("mainUI").classList.add("hidden");
+  } else {
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("mainUI").classList.remove("hidden");
+  }
+    
   loadFixedRegisterGroups();
   setWiFiMode(savedWiFiMode);
   refreshGeneralInfo();

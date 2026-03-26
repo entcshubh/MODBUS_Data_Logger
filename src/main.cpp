@@ -1,13 +1,14 @@
 #include "Global.h"
 
-void setupOTA();
-
 
 //=================== SETUP ==================
 void setup()
 {
   Serial.begin(115200);
   delay(500);
+
+  // Serial.print("Config size: ");
+  // Serial.println(sizeof(config));
 
   Serial.println("\n===== SYSTEM BOOT =====");
 
@@ -17,15 +18,28 @@ void setup()
 
   // Button
   pinMode(CONFIG_BUTTON_PIN, INPUT);
-  // attachInterrupt(digitalPinToInterrupt(CONFIG_BUTTON_PIN), configButtonISR, FALLING);
 
   // EEPROM
   EEPROM.begin(EEPROM_SIZE);
+
   loadConfigFromEEPROM();
+  
+  // Validate config
+  if (config.magic != CONFIG_MAGIC || config.version != CONFIG_VERSION)
+  {
+    Serial.println("⚠️ Invalid config → loading defaults");
+
+    setDefaultConfig();
+    saveConfigToEEPROM();
+  }
+
   printCurrentConfig();
 
   // Modbus hardware
   initModbusHardware();
+
+  // // MQTT - WIFI SETUP
+  // void postingSetup();
 
   // MQTT Setup
   mqttClient.setServer(config.mqttHost, config.mqttPort);
@@ -45,20 +59,23 @@ void setup()
   setupOTA();
 }
 
-//=============================== LOOP ==============================
-
+//=============================== LOOP ===============================
 void loop()
-{ 
-    ArduinoOTA.handle(); // OTA service
- 
+{
+  // Serial.print("STATE = ");
+  // Serial.println(state);
 
-  // Always check config button first
+  ArduinoOTA.handle();
+
+  // void pressButtonLoop();
+
+  // ================= BUTTON =================
   if (checkConfigButton())
   {
     startHotspotMode();
   }
 
-  // If hotspot mode active
+  // ================= HOTSPOT =================
   if (hotspotMode)
   {
     server.handleClient();
@@ -67,23 +84,104 @@ void loop()
     return;
   }
 
-  // Normal system operation
-  loopConnectionProcess();
+  // void loopBootConfig();
 
-  if (mqttClient.connected())
+  // ================= STATE MACHINE =================
+  switch (state)
   {
-    mqttClient.loop();
-  }
+  // -------- WIFI --------
+  case STATE_NORMAL_WIFI:
+    processWiFiState();
+    break;
 
-  server.handleClient();
-  if (state == STATE_NORMAL_MODBUS)
+  // -------- NETWORK --------
+  case STATE_NORMAL_NET:
+    processNetState();
+    break;
+
+  // -------- MODBUS INIT --------
+  case STATE_NORMAL_MODBUS:
+    processModbusState();
+    break;
+
+  // -------- RUNNING --------
+  case STATE_RUNNING:
   {
-    if (millis() - lastPublishTime >= (config.publishInterval * 1000))
+    // ================= MQTT KEEP ALIVE =================
+    if (mqttClient.connected())
+      mqttClient.loop();
+
+    // ================= WIFI CHECK =================
+    if (WiFi.status() != WL_CONNECTED)
+    {
+      Serial.println("⚠️ WiFi dropped -> restarting WiFi");
+
+      mqttReady = false;
+      httpReady = false;
+      modbusReady = false;
+
+      state = STATE_NORMAL_WIFI;
+      break;
+    }
+
+    // ================= NETWORK CHECK =================
+    if (!mqttClient.connected())
+      mqttReady = false;
+
+    if (!(mqttReady || httpReady))
+    {
+      Serial.println("⚠️ Network lost -> restarting");
+
+      modbusReady = false;
+      state = STATE_NORMAL_NET;
+      break;
+    }
+
+    // ================= MODBUS CHECK =================
+    if (!modbusReady)
+    {
+      state = STATE_NORMAL_MODBUS;
+      break;
+    }
+
+    // ================= INTERVAL LOGIC 🔥 =================
+    static uint8_t failCount = 0;
+
+    if ((unsigned long)(millis() - lastPublishTime) >= (config.postInterval * 1000))
     {
       lastPublishTime = millis();
 
-      Serial.println("📡 Running Modbus + Publish");
+      Serial.println("⏱ Interval Triggered");
+
+      bool success = readModbusAndPublish();
+
+      if (!success)
+      {
+        failCount++;
+        Serial.printf("❌ Publish failed (%d)\n", failCount);
+
+        if (failCount >= 5)
+        {
+          Serial.println("⚠️ Modbus lost -> restarting MODBUS");
+          failCount = 0;
+          modbusReady = false;
+          state = STATE_NORMAL_MODBUS;
+        }
+      }
+      else
+      {
+        Serial.println("✅ Data Sent");
+        failCount = 0;
+      }
     }
   }
-  delay(1);
+  break;
+
+  // -------- HOTSPOT STATE --------
+  case STATE_HOTSPOT:
+    break;
+  }
+
+  // ALWAYS RUN
+  server.handleClient();
 }
